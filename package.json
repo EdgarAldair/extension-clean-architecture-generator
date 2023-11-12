@@ -2,7 +2,7 @@
   "name": "clean-code-generator",
   "displayName": "clean-code-generator",
   "description": "generate a clean code genarator for projects",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "icon": "./cleanCodeLogo.png",
   "publisher": "EdgarAldair",
   "repository": {
