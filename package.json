@@ -14,7 +14,7 @@
   "contributes": {
     "commands": [{
       "command": "extension.generarCodigo",
-      "title": "Hello World"
+      "title": "Clean Code Generator"
     }]
   },
   "scripts": {

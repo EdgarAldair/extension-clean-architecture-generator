@@ -6,41 +6,141 @@ function generarEstructuraDeArchivos(nombreFeat, nombreModelo, campos) {
     if (nombreFeat && nombreModelo && campos.length > 0) {
         const carpetaFeat = path.join(vscode.workspace.rootPath || '', 'lib', nombreFeat);
 
-        // Crea la estructura de carpetas
         fs.mkdirSync(carpetaFeat);
         fs.mkdirSync(path.join(carpetaFeat, 'application'));
         fs.mkdirSync(path.join(carpetaFeat, 'domain'));
         fs.mkdirSync(path.join(carpetaFeat, 'infrastructure'));
         fs.mkdirSync(path.join(carpetaFeat, 'presentation'));
 
-        // Crea el archivo del modelo en la carpeta domain
+		 const nombreModeloTransformado = transformarNombreModelo(nombreModelo);
+
         const modeloFilePath = path.join(carpetaFeat, 'domain', `${nombreModelo}.dart`);
         fs.writeFileSync(modeloFilePath, generateDartFileContent(nombreModelo, campos));
 
-        // Crea el archivo de la interfaz del data source en la carpeta domain
         const iDataSourceFilePath = path.join(carpetaFeat, 'domain', `i_${nombreModelo}_data_source.dart`);
         fs.writeFileSync(iDataSourceFilePath, generateIDataSourceFileContent(nombreModelo));
 
-        // Crea el archivo de la interfaz del facade en la carpeta domain
         const iFacadeFilePath = path.join(carpetaFeat, 'domain', `i_${nombreModelo}_facade.dart`);
         fs.writeFileSync(iFacadeFilePath, generateIFacadeFileContent(nombreModelo));
 
-        // Crea el archivo del data source impl en la carpeta infrastructure
         const dataSourceImplFilePath = path.join(carpetaFeat, 'infrastructure', `${nombreModelo.toLowerCase()}_data_source_impl.dart`);
         fs.writeFileSync(dataSourceImplFilePath, generateDataSourceImplFileContent(nombreModelo));
 
-        // Crea el archivo del facade impl en la carpeta infrastructure
         const facadeImplFilePath = path.join(carpetaFeat, 'infrastructure', `${nombreModelo.toLowerCase()}_facade_impl.dart`);
         fs.writeFileSync(facadeImplFilePath, generateFacadeImplFileContent(nombreModelo));
+
+        const blocFilePath = path.join(carpetaFeat, 'application', `${nombreModelo.toLowerCase()}_bloc.dart`);
+        const eventFilePath = path.join(carpetaFeat, 'application', `${nombreModelo.toLowerCase()}_event.dart`);
+        const stateFilePath = path.join(carpetaFeat, 'application', `${nombreModelo.toLowerCase()}_state.dart`);
+
+        fs.writeFileSync(blocFilePath, generateBlocFileContent(nombreModelo));
+        fs.writeFileSync(eventFilePath, generateEventFileContent(nombreModelo));
+        fs.writeFileSync(stateFilePath, generateStateFileContent(nombreModelo));
     }
 }
 
 
+function transformarNombreModelo(nombreModelo) {
+    const partes = nombreModelo.split('_');
+    
+    const nombreTransformado = partes.map(parte => parte.charAt(0).toUpperCase() + parte.slice(1)).join('');
+
+    return nombreTransformado;
+}
+
+function transformarNombreModeloCamelCase(nombreModelo) {
+    const partes = nombreModelo.split('_');
+    
+    const nombreTransformadoACamelCase = partes.map((parte, index) => {
+        if (index === 0) {
+            return parte;
+        }
+        return parte.charAt(0).toUpperCase() + parte.slice(1);
+    }).join('');
+
+    return nombreTransformadoACamelCase;
+}
+
+
+
+function generateBlocFileContent(nombreModelo) {
+    const nombreModeloLaPrimeraMayuscula = transformarNombreModelo(nombreModelo);
+
+    let content = `import 'package:bloc/bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:injectable/injectable.dart';
+
+import '../domain/i_${nombreModelo}_facade.dart';
+import '../domain/${nombreModelo.toLowerCase()}.dart';
+
+part '${nombreModelo.toLowerCase()}_event.dart';
+part '${nombreModelo.toLowerCase()}_state.dart';
+part '${nombreModelo.toLowerCase()}_bloc.freezed.dart';
+
+@injectable
+class ${nombreModeloLaPrimeraMayuscula}Bloc extends Bloc<${nombreModeloLaPrimeraMayuscula}Event, ${nombreModeloLaPrimeraMayuscula}State> {
+  ${nombreModeloLaPrimeraMayuscula}Bloc(I${nombreModeloLaPrimeraMayuscula}Facade facade)
+      : super(${nombreModeloLaPrimeraMayuscula}State.initial()) {
+    on<_${nombreModeloLaPrimeraMayuscula}Event>((event, emit) async {
+      emit(
+        state.copyWith(
+          isLoading: true,
+        ),
+      );
+
+      final ${transformarNombreModeloCamelCase(nombreModelo)} = await facade.${transformarNombreModeloCamelCase(nombreModelo)}(event.${transformarNombreModeloCamelCase(nombreModelo)});
+      emit(
+        state.copyWith(
+          isLoading: false,
+          ${transformarNombreModeloCamelCase(nombreModelo)}: event.${transformarNombreModeloCamelCase(nombreModelo)},
+        ),
+      );
+    });
+  }
+}
+`;
+
+    return content;
+}
+
+function generateEventFileContent(nombreModelo) {
+    const nombreModeloLaPrimeraMayuscula = transformarNombreModelo(nombreModelo);
+    let content = `part of '${nombreModelo.toLowerCase()}_bloc.dart';
+
+@freezed
+class ${nombreModeloLaPrimeraMayuscula}Event with _$${nombreModeloLaPrimeraMayuscula}Event {
+  const factory ${nombreModeloLaPrimeraMayuscula}Event.${transformarNombreModeloCamelCase(nombreModelo)}({
+    required ${nombreModeloLaPrimeraMayuscula} ${transformarNombreModeloCamelCase(nombreModelo)},
+  }) = _${nombreModeloLaPrimeraMayuscula}Event;
+}
+`;
+
+    return content;
+}
+
+function generateStateFileContent(nombreModelo) {
+    const nombreModeloLaPrimeraMayuscula = transformarNombreModelo(nombreModelo);
+
+    let content = `part of '${nombreModelo.toLowerCase()}_bloc.dart';
+
+@freezed
+class ${nombreModeloLaPrimeraMayuscula}State with _$${nombreModeloLaPrimeraMayuscula}State {
+  const factory ${nombreModeloLaPrimeraMayuscula}State({
+    required bool isLoading,
+    ${nombreModeloLaPrimeraMayuscula}? ${transformarNombreModeloCamelCase(nombreModelo)},
+  }) = _${nombreModeloLaPrimeraMayuscula}State;
+
+  factory ${nombreModeloLaPrimeraMayuscula}State.initial() =>
+      const ${nombreModeloLaPrimeraMayuscula}State(isLoading: false);
+}
+`;
+
+    return content;
+}
 
 function generateDartFileContent(nombreModelo, campos) {
-    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+    const nombreModeloConMayuscula =transformarNombreModelo(nombreModelo);
 
-    // Contenido del archivo Dart
     let content = `import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
@@ -77,13 +177,12 @@ class ${nombreModeloConMayuscula} extends Equatable {
 }
 
 function generateIDataSourceFileContent(nombreModelo) {
-    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+    const nombreModeloConMayuscula = transformarNombreModelo(nombreModelo);
 
-    // Contenido del archivo de la interfaz del data source
     let content = `import '${nombreModelo.toLowerCase()}.dart';
 
 abstract class I${nombreModeloConMayuscula}DataSource {
-  Future<${nombreModeloConMayuscula}>  ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo});
+  Future<${nombreModeloConMayuscula}>  ${transformarNombreModeloCamelCase(nombreModelo)}(${nombreModeloConMayuscula} ${transformarNombreModeloCamelCase(nombreModelo)});
 }
 `;
 
@@ -91,13 +190,12 @@ abstract class I${nombreModeloConMayuscula}DataSource {
 }
 
 function generateIFacadeFileContent(nombreModelo) {
-    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+    const nombreModeloConMayuscula = transformarNombreModelo(nombreModelo);
 
-    // Contenido del archivo de la interfaz del facade
     let content = `import '${nombreModelo.toLowerCase()}.dart';
 
 abstract class I${nombreModeloConMayuscula}Facade {
-  Future<${nombreModeloConMayuscula}>  ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo});
+  Future<${nombreModeloConMayuscula}>  ${transformarNombreModeloCamelCase(nombreModelo)}(${nombreModeloConMayuscula} ${transformarNombreModeloCamelCase(nombreModelo)});
 }
 `;
 
@@ -105,9 +203,8 @@ abstract class I${nombreModeloConMayuscula}Facade {
 }
 
 function generateDataSourceImplFileContent(nombreModelo) {
-    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+    const nombreModeloConMayuscula = transformarNombreModelo(nombreModelo);
 
-    // Contenido del archivo del data source impl
     let content = `import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 
@@ -122,10 +219,10 @@ class ${nombreModeloConMayuscula}DataSourceImpl implements I${nombreModeloConMay
   final Dio _dio;
 
   @override
-  Future<${nombreModeloConMayuscula}> ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo}) async {
+  Future<${nombreModeloConMayuscula}> ${transformarNombreModeloCamelCase(nombreModelo)}(${nombreModeloConMayuscula} ${transformarNombreModeloCamelCase(nombreModelo)}) async {
     final res = await _dio.post<Json>(
       "TU_API_AQUI",
-      data: ${nombreModelo}.toJson(),
+      data: ${transformarNombreModeloCamelCase(nombreModelo)}.toJson(),
     );
     return ${nombreModeloConMayuscula}.fromJson(res.data);
   }
@@ -136,9 +233,8 @@ class ${nombreModeloConMayuscula}DataSourceImpl implements I${nombreModeloConMay
 }
 
 function generateFacadeImplFileContent(nombreModelo) {
-    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+    const nombreModeloConMayuscula = transformarNombreModelo(nombreModelo);
 
-    // Contenido del archivo del facade impl
     let content = `import 'package:injectable/injectable.dart';
 
 import '../domain/i_${nombreModelo}_data_source.dart';
@@ -152,10 +248,10 @@ class ${nombreModeloConMayuscula}FacadeImpl extends I${nombreModeloConMayuscula}
   final I${nombreModeloConMayuscula}DataSource _source;
 
   @override
-  Future<${nombreModeloConMayuscula}> ${nombreModelo.toLowerCase()}(
-    ${nombreModeloConMayuscula} ${nombreModelo},
+  Future<${nombreModeloConMayuscula}> ${transformarNombreModeloCamelCase(nombreModelo)}(
+    ${nombreModeloConMayuscula} ${transformarNombreModeloCamelCase(nombreModelo)},
   ) {
-    return _source.${nombreModelo.toLowerCase()}(${nombreModelo});
+    return _source.${transformarNombreModeloCamelCase(nombreModelo)}(${transformarNombreModeloCamelCase(nombreModelo)});
   }
 }
 `;
@@ -175,7 +271,6 @@ function generarValorPorTipo(campo) {
             return `json?['${campo.nombre}'] as bool? ?? ${campo.required ? 'false' : 'false'} `;
         case 'datetime':
             return `json?['${campo.nombre}'] != null ? DateTime.parse(json['${campo.nombre}']) : ${campo.required ? 'DateTime.now()' : ' DateTime.now()'}`;
-        // Agrega más casos según sea necesario
         default:
             return `${campo.tipo}? ?? ${campo.required ? "''" : "''"} `;
     }
@@ -184,7 +279,6 @@ function generarValorPorTipo(campo) {
 async function solicitarInformacionCampo() {
     const nombreCampo = await vscode.window.showInputBox({ prompt: 'Nombre del campo' });
 
-    // Verifica si el usuario canceló la entrada o no proporcionó un nombre
     if (nombreCampo === undefined || nombreCampo.trim() === '') {
         vscode.window.showErrorMessage('Nombre del campo inválido o vacío.');
         return;
@@ -194,7 +288,6 @@ async function solicitarInformacionCampo() {
 
     const tipoCampo = await vscode.window.showQuickPick(['String', 'int', 'bool', 'DateTime'], { placeHolder: 'Seleccione el tipo de campo' });
 
-    // Verifica si el usuario canceló la entrada o no proporcionó un tipo de campo
     if (tipoCampo === undefined) {
         vscode.window.showErrorMessage('Tipo de campo inválido o no seleccionado.');
         return;
@@ -202,17 +295,14 @@ async function solicitarInformacionCampo() {
 
     return {
         nombre: nombreCampo,
-        tipo: tipoCampo.toLowerCase(), // Se utiliza toLowerCase() para garantizar la consistencia
         required: esRequerido,
     };
 }
 
-// This method is called when your extension is activated
 async function activate(context) {
     let disposable = vscode.commands.registerCommand('extension.generarCodigo', async () => {
         const nombreFeat = await vscode.window.showInputBox({ prompt: 'Nombre del feat' });
 
-        // Verifica si el usuario canceló la entrada o no proporcionó un nombre
         if (nombreFeat === undefined || nombreFeat.trim() === '') {
             vscode.window.showErrorMessage('Nombre del feat inválido o vacío.');
             return;
@@ -220,7 +310,6 @@ async function activate(context) {
 
         const nombreModelo = await vscode.window.showInputBox({ prompt: 'Nombre del modelo' });
 
-        // Verifica si el usuario canceló la entrada o no proporcionó un nombre
         if (nombreModelo === undefined || nombreModelo.trim() === '') {
             vscode.window.showErrorMessage('Nombre del modelo inválido o vacío.');
             return;
@@ -248,7 +337,6 @@ async function activate(context) {
     context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 function deactivate() {}
 
 module.exports = {
