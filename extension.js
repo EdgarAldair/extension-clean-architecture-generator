@@ -16,8 +16,26 @@ function generarEstructuraDeArchivos(nombreFeat, nombreModelo, campos) {
         // Crea el archivo del modelo en la carpeta domain
         const modeloFilePath = path.join(carpetaFeat, 'domain', `${nombreModelo}.dart`);
         fs.writeFileSync(modeloFilePath, generateDartFileContent(nombreModelo, campos));
+
+        // Crea el archivo de la interfaz del data source en la carpeta domain
+        const iDataSourceFilePath = path.join(carpetaFeat, 'domain', `i_${nombreModelo}_data_source.dart`);
+        fs.writeFileSync(iDataSourceFilePath, generateIDataSourceFileContent(nombreModelo));
+
+        // Crea el archivo de la interfaz del facade en la carpeta domain
+        const iFacadeFilePath = path.join(carpetaFeat, 'domain', `i_${nombreModelo}_facade.dart`);
+        fs.writeFileSync(iFacadeFilePath, generateIFacadeFileContent(nombreModelo));
+
+        // Crea el archivo del data source impl en la carpeta infrastructure
+        const dataSourceImplFilePath = path.join(carpetaFeat, 'infrastructure', `${nombreModelo.toLowerCase()}_data_source_impl.dart`);
+        fs.writeFileSync(dataSourceImplFilePath, generateDataSourceImplFileContent(nombreModelo));
+
+        // Crea el archivo del facade impl en la carpeta infrastructure
+        const facadeImplFilePath = path.join(carpetaFeat, 'infrastructure', `${nombreModelo.toLowerCase()}_facade_impl.dart`);
+        fs.writeFileSync(facadeImplFilePath, generateFacadeImplFileContent(nombreModelo));
     }
 }
+
+
 
 function generateDartFileContent(nombreModelo, campos) {
     const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
@@ -58,6 +76,95 @@ class ${nombreModeloConMayuscula} extends Equatable {
     return content;
 }
 
+function generateIDataSourceFileContent(nombreModelo) {
+    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+
+    // Contenido del archivo de la interfaz del data source
+    let content = `import '${nombreModelo.toLowerCase()}.dart';
+
+abstract class I${nombreModeloConMayuscula}DataSource {
+  Future<${nombreModeloConMayuscula}>  ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo});
+}
+`;
+
+    return content;
+}
+
+function generateIFacadeFileContent(nombreModelo) {
+    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+
+    // Contenido del archivo de la interfaz del facade
+    let content = `import '${nombreModelo.toLowerCase()}.dart';
+
+abstract class I${nombreModeloConMayuscula}Facade {
+  Future<${nombreModeloConMayuscula}>  ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo});
+}
+`;
+
+    return content;
+}
+
+function generateDataSourceImplFileContent(nombreModelo) {
+    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+
+    // Contenido del archivo del data source impl
+    let content = `import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
+
+import '../../core/domain/utils.dart';
+import '../domain/i_${nombreModelo}_data_source.dart';
+import '../domain/${nombreModelo.toLowerCase()}.dart';
+
+@Injectable(as: I${nombreModeloConMayuscula}DataSource)
+class ${nombreModeloConMayuscula}DataSourceImpl implements I${nombreModeloConMayuscula}DataSource {
+  ${nombreModeloConMayuscula}DataSourceImpl(this._dio);
+
+  final Dio _dio;
+
+  @override
+  Future<${nombreModeloConMayuscula}> ${nombreModelo.toLowerCase()}(${nombreModeloConMayuscula} ${nombreModelo}) async {
+    final res = await _dio.post<Json>(
+      "TU_API_AQUI",
+      data: ${nombreModelo}.toJson(),
+    );
+    return ${nombreModeloConMayuscula}.fromJson(res.data);
+  }
+}
+`;
+
+    return content;
+}
+
+function generateFacadeImplFileContent(nombreModelo) {
+    const nombreModeloConMayuscula = nombreModelo.charAt(0).toUpperCase() + nombreModelo.slice(1).toLowerCase();
+
+    // Contenido del archivo del facade impl
+    let content = `import 'package:injectable/injectable.dart';
+
+import '../domain/i_${nombreModelo}_data_source.dart';
+import '../domain/i_${nombreModelo}_facade.dart';
+import '../domain/${nombreModelo.toLowerCase()}.dart';
+
+@Injectable(as: I${nombreModeloConMayuscula}Facade)
+class ${nombreModeloConMayuscula}FacadeImpl extends I${nombreModeloConMayuscula}Facade {
+  ${nombreModeloConMayuscula}FacadeImpl(this._source);
+
+  final I${nombreModeloConMayuscula}DataSource _source;
+
+  @override
+  Future<${nombreModeloConMayuscula}> ${nombreModelo.toLowerCase()}(
+    ${nombreModeloConMayuscula} ${nombreModelo},
+  ) {
+    return _source.${nombreModelo.toLowerCase()}(${nombreModelo});
+  }
+}
+`;
+
+    return content;
+}
+
+
+
 function generarValorPorTipo(campo) {
     switch (campo.tipo) {
         case 'string':
@@ -67,12 +174,11 @@ function generarValorPorTipo(campo) {
         case 'bool':
             return `json?['${campo.nombre}'] as bool? ?? ${campo.required ? 'false' : 'false'} `;
         case 'datetime':
-            return `json?['${campo.nombre}'] as DateTime? ?? ${campo.required ? 'DateTime.now()' : ' DateTime.now()'}`;
+            return `json?['${campo.nombre}'] != null ? DateTime.parse(json['${campo.nombre}']) : ${campo.required ? 'DateTime.now()' : ' DateTime.now()'}`;
         // Agrega más casos según sea necesario
         default:
             return `${campo.tipo}? ?? ${campo.required ? "''" : "''"} `;
     }
-
 }
 
 async function solicitarInformacionCampo() {
