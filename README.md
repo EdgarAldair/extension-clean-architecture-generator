@@ -83,6 +83,6 @@ Si tienes alguna sugerencia con gusto contactame al correo: edgarsaenz243@gmail.
 
 
 ## 🔗 Links
-[![portfolio](https://img.shields.io/badge/check_out_my_theme-e74c3c?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://github.com/EdgarAldair)
+[![portfolio](https://img.shields.io/badge/check_out_my_theme-e74c3c?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://github.com/EdgarAldair/vscode-vintage-vibrance)
 [![linkedin](https://img.shields.io/badge/linkedin-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/edgar-saenz/)
 
