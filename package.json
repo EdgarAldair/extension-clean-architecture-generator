@@ -1,8 +1,8 @@
 {
-  "name": "clean-code-generator",
-  "displayName": "clean-code-generator",
-  "description": "generate a clean code genarator for projects",
-  "version": "1.0.0",
+  "name": "clean-architecture-generator",
+  "displayName": "clean-architecture-generator",
+  "description": "generate a clean architecture genarator for projects",
+  "version": "1.0.1",
   "icon": "./cleanCodeLogo.png",
   "publisher": "EdgarAldair",
   "repository": {
@@ -19,7 +19,7 @@
   "contributes": {
     "commands": [{
       "command": "extension.generarCodigo",
-      "title": "Clean Code Generator"
+      "title": "Clean Architecture Generator"
     }]
   },
   "scripts": {
